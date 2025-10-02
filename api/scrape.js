@@ -48,7 +48,7 @@ module.exports = async (req, res) => {
 
         // --- EXTRACT TOTAL AMOUNT ---
         const amountSelector = 'span[data-v-c49acc64-s]';
-        totalAmount = await page.evaluate((selector) => {
+        const totalAmount = await page.evaluate((selector) => {
         const el = document.querySelector(selector);
         if (!el) return 'Amount not found';
             
