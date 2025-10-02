@@ -49,8 +49,7 @@ module.exports = async (req, res) => {
         // --- EXTRACT TOTAL AMOUNT ---
         
         // 1. Define the selector for the amount span using the specific data attribute.
-        const el = document.querySelector('span[data-v-c49acc64-s]');
-        console.log(el ? el.innerText : 'Not found');           
+        const el = page.querySelector('span[data-v-c49acc64-s]');
         const rawText = el.innerText;
         // Remove currency symbols, non-breaking spaces, and trim whitespace.
             const cleanedText = rawText.replace(/€/g, '').replace(/\s/g, '').trim();
