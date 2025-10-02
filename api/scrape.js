@@ -49,10 +49,7 @@ module.exports = async (req, res) => {
         // --- EXTRACT TOTAL AMOUNT ---
         
         // 1. Define the selector for the amount span.
-        const amountSelector = '.value span';
-
-        // 2. Wait for the element to be visible.
-        await page.waitForSelector(amountSelector, { visible: true, timeout: 15000 });
+        const amountSelector = 'span[c49acc64-s]';
 
         // 3. Extract and clean the text content.
         totalAmount = await page.evaluate((selector) => {
