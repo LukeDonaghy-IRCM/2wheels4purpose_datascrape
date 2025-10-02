@@ -43,16 +43,6 @@ module.exports = async (req, res) => {
         // Navigate to the page and wait for it to be fully loaded
         await page.goto(urlToScrape, { waitUntil: 'networkidle2' });
         
-        // --- UPDATED INTERACTION LOGIC ---
-
-        // 3. After clicking, wait for the specific div container you identified to be populated.
-        // This is a much more reliable wait condition.
-        await page.waitForFunction(
-            () => document.querySelector('div.block ul.contributions__ul')?.children.length > 0,
-            { timeout: 10000 }
-        );
-
-
         // --- DATA EXTRACTION ---
         // The selectors are now based on the exact HTML structure you provided.
         const extractedData = await page.evaluate(() => {
