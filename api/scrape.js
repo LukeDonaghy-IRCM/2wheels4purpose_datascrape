@@ -31,8 +31,16 @@ module.exports = async (req, res) => {
         
         // Navigate to the page and wait for it to be fully loaded.
         await page.goto(urlToScrape, { waitUntil: 'networkidle2', timeout: 25000 });
+
+        //Debug Puppeteer
+        await page.goto(urlToScrape, { waitUntil: 'networkidle2', timeout: 25000 });
+        await page.setUserAgent('Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/123.0.0.0 Safari/537.36');
+        await page.waitForTimeout(5000);
+        const html = await page.content();
+        console.log(html); // Inspect for your selector
         const fs = require('fs');
         fs.writeFileSync('/tmp/debug.html', html);
+        
         // --- DATA EXTRACTION ---
 
         // Get the title directly from the browser tab (<title> tag).
