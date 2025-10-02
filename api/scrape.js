@@ -20,8 +20,6 @@ module.exports = async (req, res) => {
                 ...chromium.args,
                 '--no-sandbox',
                 '--disable-setuid-sandbox',
-                '--disable-gpu',
-                '--single-process'
             ],
             defaultViewport: chromium.defaultViewport,
             executablePath: await chromium.executablePath(),
