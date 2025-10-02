@@ -46,8 +46,8 @@ module.exports = async (req, res) => {
         // --- UPDATED INTERACTION LOGIC ---
 
         // 1. A general, fixed wait of 3 seconds to allow the initial page to render.
-        // This replaces the specific selector waits.
-        await page.waitForTimeout(3000);
+        // This uses a standard Promise for a timeout, replacing the deprecated function.
+        await new Promise(r => setTimeout(r, 3000));
 
         // --- DATA EXTRACTION ---
         // Now that we've waited, we can attempt to extract the data.
