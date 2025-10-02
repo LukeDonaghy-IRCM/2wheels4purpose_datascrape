@@ -1,7 +1,7 @@
 // This is a Vercel serverless function
 // It will be accessible at your-deployment-url/api/scrape
 
-const chromium = require('chrome-aws-lambda');
+const chromium = require('@sparticuz/chromium');
 const puppeteer = require('puppeteer-core');
 
 // The main handler for the serverless function
@@ -13,12 +13,12 @@ module.exports = async (req, res) => {
     let result = null;
 
     try {
-        // Launch a headless browser instance
+        // Launch a headless browser instance using the updated chromium package
         browser = await puppeteer.launch({
             args: chromium.args,
             defaultViewport: chromium.defaultViewport,
-            executablePath: await chromium.executablePath,
-            headless: true, // Use the new headless mode
+            executablePath: await chromium.executablePath(),
+            headless: chromium.headless, // Use the headless property from the package
             ignoreHTTPSErrors: true,
         });
 
@@ -26,11 +26,11 @@ module.exports = async (req, res) => {
         
         // Block unnecessary resources like images and CSS to speed up loading
         await page.setRequestInterception(true);
-        page.on('request', (req) => {
-            if (['image', 'stylesheet', 'font'].includes(req.resourceType())) {
-                req.abort();
+        page.on('request', (request) => {
+            if (['image', 'stylesheet', 'font'].includes(request.resourceType())) {
+                request.abort();
             } else {
-                req.continue();
+                request.continue();
             }
         });
 
@@ -88,3 +88,4 @@ module.exports = async (req, res) => {
     // Send the successful JSON response
     res.status(200).json(result);
 };
+
