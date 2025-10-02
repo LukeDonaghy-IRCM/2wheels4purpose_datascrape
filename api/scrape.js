@@ -10,7 +10,7 @@ module.exports = async (req, res) => {
     const urlToScrape = 'https://jesoutiens.fondationsaintluc.be/fr-FR/project/2-wheels-4-purpose';
 
     let browser = null;
-    let projectTitle = '';
+    let projectTitle = 'Title not found';
 
     try {
         // Launch a headless browser instance.
@@ -33,17 +33,18 @@ module.exports = async (req, res) => {
         // Navigate to the page and wait for it to be fully loaded.
         await page.goto(urlToScrape, { waitUntil: 'networkidle2', timeout: 25000 });
         
-        // --- DATA EXTRACTION ---
+        // --- NEW, MORE RELIABLE DATA EXTRACTION ---
 
-        // 1. Define the selector for the project title.
-        const titleSelector = '.title.block';
-                
-        // 3. Extract the text content of the title element.
-        projectTitle = await page.evaluate((selector) => {
-            const el = document.querySelector(selector);
-            return el ? el.innerText : 'Title not found';
-        }, titleSelector);
+        // Get the title directly from the browser tab (<title> tag).
+        // This is much faster and more reliable than searching the page body.
+        const pageTitle = await page.title(); // e.g., "2Wheels 4Purpose | Fondation Saint-Luc"
 
+        // Clean up the title to get just the project name.
+        if (pageTitle && pageTitle.includes('|')) {
+            projectTitle = pageTitle.split('|')[0].trim();
+        } else if (pageTitle) {
+            projectTitle = pageTitle;
+        }
 
     } catch (error) {
         console.error(error);
