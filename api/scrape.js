@@ -42,6 +42,8 @@ module.exports = async (req, res) => {
 
         // Navigate to the page and wait for it to be fully loaded
         await page.goto(urlToScrape, { waitUntil: 'networkidle2' });
+        await page.waitForSelector('span[data-v-c49acc64-s]');
+        await page.waitForSelector('span[data-v-d3bfa2a4]');
         
         // --- DATA EXTRACTION ---
         // The selectors are now based on the exact HTML structure you provided.
