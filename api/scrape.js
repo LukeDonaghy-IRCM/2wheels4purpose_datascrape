@@ -48,13 +48,14 @@ module.exports = async (req, res) => {
 
         // --- EXTRACT TOTAL AMOUNT ---
         const amountSelector = 'span[data-v-c49acc64-s]';
-        const totalAmount = await page.evaluate((selector) => {
-        const el = document.querySelector(selector);
-        if (!el) return 'Amount not found';
-            
-            // Get raw text e.g., "520&nbsp;€"
+        totalAmount = await page.evaluate((selector) => {
+            const el = document.querySelector(selector);
+            if (!el) {
+                console.log('Selector not found:', selector);
+                return 'Amount not found';
+            }
             const rawText = el.innerText;
-            // Remove currency symbols, non-breaking spaces, and trim whitespace.
+            console.log('Raw text:', rawText);
             const cleanedText = rawText.replace(/€/g, '').replace(/\s/g, '').trim();
             return cleanedText;
         }, amountSelector);
