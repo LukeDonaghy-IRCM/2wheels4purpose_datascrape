@@ -37,7 +37,6 @@ module.exports = async (req, res) => {
         // 1. Wait for the main container of the contributions list to appear.
         // The user has indicated this loads automatically.
         const contributionsContainerSelector = 'ul.contributions__ul';
-        await page.waitForSelector(contributionsContainerSelector, { visible: true, timeout: 15000 });
 
         // 2. Extract all the required information in one step.
         extractedData = await page.evaluate(() => {
