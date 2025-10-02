@@ -11,6 +11,7 @@ module.exports = async (req, res) => {
 
     let browser = null;
     let projectTitle = 'Title not found';
+    let totalAmount = 'Amount not found';
 
     try {
         // Launch a headless browser instance.
@@ -33,10 +34,9 @@ module.exports = async (req, res) => {
         // Navigate to the page and wait for it to be fully loaded.
         await page.goto(urlToScrape, { waitUntil: 'networkidle2', timeout: 25000 });
         
-        // --- NEW, MORE RELIABLE DATA EXTRACTION ---
+        // --- DATA EXTRACTION ---
 
         // Get the title directly from the browser tab (<title> tag).
-        // This is much faster and more reliable than searching the page body.
         const pageTitle = await page.title(); // e.g., "2Wheels 4Purpose | Fondation Saint-Luc"
 
         // Clean up the title to get just the project name.
@@ -46,10 +46,31 @@ module.exports = async (req, res) => {
             projectTitle = pageTitle;
         }
 
+        // --- EXTRACT TOTAL AMOUNT ---
+        
+        // 1. Define the selector for the amount span.
+        const amountSelector = '.value span';
+
+        // 2. Wait for the element to be visible.
+        await page.waitForSelector(amountSelector, { visible: true, timeout: 15000 });
+
+        // 3. Extract and clean the text content.
+        totalAmount = await page.evaluate((selector) => {
+            const el = document.querySelector(selector);
+            if (!el) return 'Amount not found';
+            
+            // Get raw text e.g., "520&nbsp;€"
+            const rawText = el.innerText;
+            // Remove currency symbols, non-breaking spaces, and trim whitespace.
+            const cleanedText = rawText.replace(/€/g, '').replace(/\s/g, '').trim();
+            return cleanedText;
+        }, amountSelector);
+
+
     } catch (error) {
         console.error(error);
         res.status(500).json({ 
-            error: 'Failed to load the page or find the title.',
+            error: 'Failed to load the page or find the data.',
             details: error.message 
         });
         return; // Stop execution on error
@@ -63,6 +84,9 @@ module.exports = async (req, res) => {
     // --- SEND THE SUCCESS RESPONSE ---
     res.setHeader('Content-Type', 'application/json');
     res.setHeader('Cache-Control', 's-maxage=300, stale-while-revalidate');
-    res.status(200).json({ project_title: projectTitle });
+    res.status(200).json({
+        project_title: projectTitle,
+        total_contribution_amount: totalAmount
+    });
 };
 
