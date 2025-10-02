@@ -16,12 +16,14 @@ module.exports = async (req, res) => {
         // Launch a headless browser instance using the updated chromium package.
         // The '--no-sandbox' and '--disable-setuid-sandbox' flags are CRITICAL
         // for running Chromium in a restricted serverless environment like Vercel.
-        // They prevent the "libnss3.so" error by disabling the sandbox feature.
+        // Added '--disable-gpu' and '--single-process' as extra failsafes.
         browser = await puppeteer.launch({
             args: [
                 ...chromium.args,
                 '--no-sandbox',
                 '--disable-setuid-sandbox',
+                '--disable-gpu',
+                '--single-process'
             ],
             defaultViewport: chromium.defaultViewport,
             executablePath: await chromium.executablePath(),
@@ -95,4 +97,3 @@ module.exports = async (req, res) => {
     // Send the successful JSON response
     res.status(200).json(result);
 };
-
