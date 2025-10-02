@@ -10,6 +10,7 @@ module.exports = async (req, res) => {
     const urlToScrape = 'https://jesoutiens.fondationsaintluc.be/fr-FR/project/2-wheels-4-purpose';
 
     let browser = null;
+    let projectTitle = '';
 
     try {
         // Launch a headless browser instance.
@@ -32,12 +33,25 @@ module.exports = async (req, res) => {
         // Navigate to the page and wait for it to be fully loaded.
         await page.goto(urlToScrape, { waitUntil: 'networkidle2', timeout: 25000 });
         
-        // If we reach this point, the page has loaded successfully.
+        // --- DATA EXTRACTION ---
+
+        // 1. Define the selector for the project title.
+        const titleSelector = '.project__title';
+        
+        // 2. Wait for the title element to be visible on the page.
+        await page.waitForSelector(titleSelector, { visible: true, timeout: 15000 });
+        
+        // 3. Extract the text content of the title element.
+        projectTitle = await page.evaluate((selector) => {
+            const el = document.querySelector(selector);
+            return el ? el.innerText : 'Title not found';
+        }, titleSelector);
+
 
     } catch (error) {
         console.error(error);
         res.status(500).json({ 
-            error: 'Failed to load the page.',
+            error: 'Failed to load the page or find the title.',
             details: error.message 
         });
         return; // Stop execution on error
@@ -50,7 +64,7 @@ module.exports = async (req, res) => {
 
     // --- SEND THE SUCCESS RESPONSE ---
     res.setHeader('Content-Type', 'application/json');
-    res.setHeader('Cache-Control', 'no-cache'); // Don't cache the success message
-    res.status(200).json({ status: 'Success', message: 'Page loaded successfully.' });
+    res.setHeader('Cache-Control', 's-maxage=300, stale-while-revalidate');
+    res.status(200).json({ project_title: projectTitle });
 };
 
