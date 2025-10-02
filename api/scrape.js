@@ -1,5 +1,5 @@
 // This is a Vercel serverless function
-// It will be accessible at your-deployment-url/api/scrape
+// It uses browser automation to scrape the data after it loads on the page.
 
 const chromium = require('@sparticuz/chromium');
 const puppeteer = require('puppeteer-core');
@@ -10,8 +10,7 @@ module.exports = async (req, res) => {
     const urlToScrape = 'https://jesoutiens.fondationsaintluc.be/fr-FR/project/2-wheels-4-purpose';
 
     let browser = null;
-    let projectTitle = 'Title not found';
-    let totalAmount = 'Amount not found';
+    let extractedData = {};
 
     try {
         // Launch a headless browser instance.
@@ -20,6 +19,8 @@ module.exports = async (req, res) => {
                 ...chromium.args,
                 '--no-sandbox',
                 '--disable-setuid-sandbox',
+                '--disable-gpu',
+                '--single-process'
             ],
             defaultViewport: chromium.defaultViewport,
             executablePath: await chromium.executablePath(),
@@ -28,50 +29,54 @@ module.exports = async (req, res) => {
         });
 
         const page = await browser.newPage();
-        
-        // Navigate to the page and wait for it to be fully loaded.
+        A
+        // Navigate to the page and wait for all network activity to settle.
         await page.goto(urlToScrape, { waitUntil: 'networkidle2', timeout: 25000 });
-
-        //Debug Puppeteer
-        await page.goto(urlToScrape, { waitUntil: 'networkidle2', timeout: 25000 });
-        await page.setUserAgent('Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/123.0.0.0 Safari/537.36');
-        await page.waitForTimeout(5000);
-        const html = await page.content();
-        console.log(html); // Inspect for your selector
-        const fs = require('fs');
-        fs.writeFileSync('/tmp/debug.html', html);
         
         // --- DATA EXTRACTION ---
 
-        // Get the title directly from the browser tab (<title> tag).
-        const pageTitle = await page.title(); // e.g., "2Wheels 4Purpose | Fondation Saint-Luc"
+        // 1. Wait for the main container of the contributions list to appear.
+        // The user has indicated this loads automatically.
+        const contributionsContainerSelector = 'ul.contributions__ul';
+        await page.waitForSelector(contributionsContainerSelector, { visible: true, timeout: 15000 });
 
-        // Clean up the title to get just the project name.
-        if (pageTitle && pageTitle.includes('|')) {
-            projectTitle = pageTitle.split('|')[0].trim();
-        } else if (pageTitle) {
-            projectTitle = pageTitle;
-        }
+        // 2. Extract all the required information in one step.
+        extractedData = await page.evaluate(() => {
+            // Extract the total number of contributions.
+            const countElement = document.querySelector('p > strong.bold.color--prim');
+            const totalContributions = countElement ? parseInt(countElement.innerText.trim(), 10) : 0;
 
-        // --- EXTRACT TOTAL AMOUNT ---
-        const amountSelector = 'span[data-v-c49acc64-s]';
-        totalAmount = await page.evaluate((selector) => {
-            const el = document.querySelector(selector);
-            if (!el) {
-                console.log('Selector not found:', selector);
-                return 'Amount not found';
-            }
-            const rawText = el.innerText;
-            console.log('Raw text:', rawText);
-            const cleanedText = rawText.replace(/€/g, '').replace(/\s/g, '').trim();
-            return cleanedText;
-        }, amountSelector);
+            // Extract the list of individual contributors.
+            const contributorElements = document.querySelectorAll('li.contribution');
+            const contributorsList = [];
+            
+            contributorElements.forEach(el => {
+                const nameElement = el.querySelector('.contribution__name');
+                const amountElement = el.querySelector('.contribution__amount');
+
+                const name = nameElement ? nameElement.innerText.trim() : 'N/A';
+                const amount = amountElement ? amountElement.innerText.trim() : 'N/A';
+
+                // Only add valid entries.
+                if (name.toLowerCase() !== 'anonyme' && name !== 'N/A') {
+                    contributorsList.push({
+                        name: name,
+                        amount: amount
+                    });
+                }
+            });
+
+            return {
+                total_contributions_count: totalContributions,
+                contributors: contributorsList
+            };
+        });
 
 
     } catch (error) {
         console.error(error);
         res.status(500).json({ 
-            error: 'Failed to load the page or find the data.',
+            error: 'Failed to scrape the contribution data.',
             details: error.message 
         });
         return; // Stop execution on error
@@ -85,9 +90,6 @@ module.exports = async (req, res) => {
     // --- SEND THE SUCCESS RESPONSE ---
     res.setHeader('Content-Type', 'application/json');
     res.setHeader('Cache-Control', 's-maxage=300, stale-while-revalidate');
-    res.status(200).json({
-        project_title: projectTitle,
-        total_contribution_amount: totalAmount
-    });
+    res.status(200).json(extractedData);
 };
 
