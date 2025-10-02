@@ -47,13 +47,17 @@ module.exports = async (req, res) => {
         }
 
         // --- EXTRACT TOTAL AMOUNT ---
-        
-        // 1. Define the selector for the amount span using the specific data attribute.
-        const el = page.querySelector('span[data-v-c49acc64-s]');
-        const rawText = el.innerText;
-        // Remove currency symbols, non-breaking spaces, and trim whitespace.
+        const amountSelector = 'span[data-v-c49acc64-s]';
+        totalAmount = await page.evaluate((selector) => {
+        const el = document.querySelector(selector);
+        if (!el) return 'Amount not found';
+            
+            // Get raw text e.g., "520&nbsp;€"
+            const rawText = el.innerText;
+            // Remove currency symbols, non-breaking spaces, and trim whitespace.
             const cleanedText = rawText.replace(/€/g, '').replace(/\s/g, '').trim();
             return cleanedText;
+        }, amountSelector);
 
 
     } catch (error) {
