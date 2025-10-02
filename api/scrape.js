@@ -55,30 +55,6 @@ module.exports = async (req, res) => {
                 const cleanedText = rawText.replace(/€/g, '').replace(/\s/g, '').trim();
                 totalAmount = parseInt(cleanedText, 10) || 0;
             }
-
-            // Select all contributor list items within the correct container
-            const contributorElements = document.querySelectorAll('div.block ul.contributions__ul li.contribution');
-            const contributors = [];
-            
-            contributorElements.forEach(el => {
-                const nameElement = el.querySelector('.contribution__name');
-                const amountElement = el.querySelector('.contribution__amount');
-
-                const name = nameElement ? nameElement.innerText.trim() : '';
-                const amount = amountElement ? amountElement.innerText.trim() : '';
-
-                if (name && name.toLowerCase() !== 'anonyme') {
-                    contributors.push({
-                        name: name,
-                        amount: amount
-                    });
-                }
-            });
-
-            return {
-                total_contribution_amount: totalAmount,
-                contributors: contributors,
-            };
         });
 
         result = extractedData;
