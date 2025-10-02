@@ -48,8 +48,8 @@ module.exports = async (req, res) => {
 
         // --- EXTRACT TOTAL AMOUNT ---
         
-        // 1. Define the selector for the amount span.
-        const amountSelector = 'span[c49acc64-s]';
+        // 1. Define the selector for the amount span using the specific data attribute.
+        const amountSelector = 'span[data-v-c49acc64-s]';
 
         // 3. Extract and clean the text content.
         totalAmount = await page.evaluate((selector) => {
