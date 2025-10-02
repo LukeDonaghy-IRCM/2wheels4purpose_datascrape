@@ -37,10 +37,7 @@ module.exports = async (req, res) => {
 
         // 1. Define the selector for the project title.
         const titleSelector = '.project__title';
-        
-        // 2. Wait for the title element to be visible on the page.
-        await page.waitForSelector(titleSelector, { visible: true, timeout: 15000 });
-        
+                
         // 3. Extract the text content of the title element.
         projectTitle = await page.evaluate((selector) => {
             const el = document.querySelector(selector);
