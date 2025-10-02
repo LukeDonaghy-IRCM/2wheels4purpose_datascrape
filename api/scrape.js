@@ -31,7 +31,6 @@ module.exports = async (req, res) => {
         
         // Navigate to the page and wait for it to be fully loaded.
         await page.goto(urlToScrape, { waitUntil: 'networkidle2', timeout: 25000 });
-        await page.waitForSelector('span[data-v-c49acc64-s]', { timeout: 15000 });
         
         // --- DATA EXTRACTION ---
 
