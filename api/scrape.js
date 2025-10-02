@@ -14,9 +14,6 @@ module.exports = async (req, res) => {
 
     try {
         // Launch a headless browser instance using the updated chromium package.
-        // The '--no-sandbox' and '--disable-setuid-sandbox' flags are CRITICAL
-        // for running Chromium in a restricted serverless environment like Vercel.
-        // Added '--disable-gpu' and '--single-process' as extra failsafes.
         browser = await puppeteer.launch({
             args: [
                 ...chromium.args,
@@ -27,7 +24,7 @@ module.exports = async (req, res) => {
             ],
             defaultViewport: chromium.defaultViewport,
             executablePath: await chromium.executablePath(),
-            headless: chromium.headless, // Use the headless property from the package
+            headless: chromium.headless,
             ignoreHTTPSErrors: true,
         });
 
@@ -46,26 +43,55 @@ module.exports = async (req, res) => {
         // Navigate to the page and wait for it to be fully loaded
         await page.goto(urlToScrape, { waitUntil: 'networkidle2' });
         
-        // --- DATA EXTRACTION ---
-        // We run JavaScript inside the context of the scraped page to get the data
-        const extractedData = await page.evaluate(() => {
-            // Selector for the total contribution amount
-            const amountElement = document.querySelector('.project-stats-item--main .project-stats-item-value strong');
-            const totalAmountText = amountElement ? amountElement.innerText : '€0';
+        // --- INTERACT WITH THE PAGE ---
 
-            // Selector for the list of individual contributors
-            const contributorElements = document.querySelectorAll('.supporter-item .supporter-item__name');
+        // 1. Define the selector for the "Soutiens" (Supporters) tab.
+        const supportersTabSelector = 'a.project-nav-link[href$="#supporters"]';
+        await page.waitForSelector(supportersTabSelector, { timeout: 10000 });
+        await page.click(supportersTabSelector);
+
+        // 2. Wait for the contributor list to appear using the new, correct selector.
+        const contributorListSelector = 'li.contribution .contribution__name';
+        await page.waitForSelector(contributorListSelector, { visible: true, timeout: 10000 });
+
+
+        // --- DATA EXTRACTION ---
+        // Now that we've waited for the data to be visible, we can extract it.
+        const extractedData = await page.evaluate(() => {
+            // UPDATED: Selector for the total contribution amount span
+            const amountElement = document.querySelector('.statistic .value span');
+            let totalAmount = 0; // Default to 0
+
+            if (amountElement) {
+                const rawText = amountElement.innerText; // e.g., "520&nbsp;€"
+                // Remove currency symbols, non-breaking spaces, and trim whitespace
+                const cleanedText = rawText.replace(/€/g, '').replace(/\s/g, '').trim();
+                // Convert the cleaned string to an integer
+                totalAmount = parseInt(cleanedText, 10) || 0;
+            }
+
+            // Select all contributor list items
+            const contributorElements = document.querySelectorAll('li.contribution');
             const contributors = [];
+            
             contributorElements.forEach(el => {
-                // Check for anonymous donors and format accordingly
-                const name = el.innerText.trim();
+                const nameElement = el.querySelector('.contribution__name');
+                const amountElement = el.querySelector('.contribution__amount');
+
+                const name = nameElement ? nameElement.innerText.trim() : '';
+                const amount = amountElement ? amountElement.innerText.trim() : '';
+
+                // Check for anonymous donors and only add valid entries
                 if (name && name.toLowerCase() !== 'anonyme') {
-                    contributors.push(name);
+                    contributors.push({
+                        name: name,
+                        amount: amount
+                    });
                 }
             });
 
             return {
-                total_contribution_amount: totalAmountText,
+                total_contribution_amount: totalAmount,
                 contributors: contributors,
             };
         });
@@ -97,3 +123,4 @@ module.exports = async (req, res) => {
     // Send the successful JSON response
     res.status(200).json(result);
 };
+
