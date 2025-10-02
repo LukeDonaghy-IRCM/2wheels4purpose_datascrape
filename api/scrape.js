@@ -28,7 +28,23 @@ module.exports = async (req, res) => {
     await page.setUserAgent(
       'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36'
     );
-
+    
+    // scroll the page to trigger lazy loading
+    await page.evaluate(async () => {
+      await new Promise((resolve) => {
+        let y = 0;
+        const step = 400;
+        const timer = setInterval(() => {
+          window.scrollBy(0, step);
+          y += step;
+          if (y >= document.body.scrollHeight) {
+            clearInterval(timer);
+            resolve();
+          }
+        }, 200);
+      });
+    });
+    await sleep(4000); // give extra time for API to respond
     // 👇 Add this immediately after creating the page
     const jsonResponses = [];
     page.on('response', async (resp) => {
