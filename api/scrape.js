@@ -31,7 +31,8 @@ module.exports = async (req, res) => {
         
         // Navigate to the page and wait for it to be fully loaded.
         await page.goto(urlToScrape, { waitUntil: 'networkidle2', timeout: 25000 });
-        
+        const fs = require('fs');
+        fs.writeFileSync('/tmp/debug.html', html);
         // --- DATA EXTRACTION ---
 
         // Get the title directly from the browser tab (<title> tag).
