@@ -14,8 +14,14 @@ module.exports = async (req, res) => {
 
     try {
         // Launch a headless browser instance using the updated chromium package
+        // We add the '--no-sandbox' and '--disable-setuid-sandbox' flags to ensure
+        // it runs correctly in a restricted serverless environment like Vercel.
         browser = await puppeteer.launch({
-            args: chromium.args,
+            args: [
+                ...chromium.args,
+                '--no-sandbox',
+                '--disable-setuid-sandbox',
+            ],
             defaultViewport: chromium.defaultViewport,
             executablePath: await chromium.executablePath(),
             headless: chromium.headless, // Use the headless property from the package
