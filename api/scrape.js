@@ -45,21 +45,10 @@ module.exports = async (req, res) => {
         
         // --- UPDATED INTERACTION LOGIC ---
 
-        // 1. Wait for a core content element to be visible first.
-        const coreContentSelector = '.statistic';
+        // 1. Wait for the project title to be visible. This is a more reliable
+        //    indicator that the page's initial JavaScript has rendered.
+        const coreContentSelector = '.project__title';
         await page.waitForSelector(coreContentSelector, { visible: true, timeout: 20000 });
-
-        // 2. Find the "Soutiens" button using a more robust method (XPath).
-        // This looks for a button that contains the text "Soutiens".
-        const supportersButtonXPath = "//button[contains(., 'Soutiens')]";
-        await page.waitForXPath(supportersButtonXPath, { timeout: 10000 });
-        const [supportersButton] = await page.$x(supportersButtonXPath);
-
-        if (supportersButton) {
-            await supportersButton.click();
-        } else {
-            throw new Error('Could not find the "Soutiens" button.');
-        }
 
         // 3. Wait for the contributor list to appear.
         const contributorListSelector = 'li.contribution .contribution__name';
