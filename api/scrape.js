@@ -45,25 +45,29 @@ module.exports = async (req, res) => {
         
         // --- UPDATED INTERACTION LOGIC ---
 
-        // 1. A general, fixed wait of 3 seconds to allow the initial page to render.
-        // This uses a standard Promise for a timeout, replacing the deprecated function.
-        await new Promise(r => setTimeout(r, 3000));
+        // 3. After clicking, wait for the specific div container you identified to be populated.
+        // This is a much more reliable wait condition.
+        await page.waitForFunction(
+            () => document.querySelector('div.block ul.contributions__ul')?.children.length > 0,
+            { timeout: 10000 }
+        );
+
 
         // --- DATA EXTRACTION ---
-        // Now that we've waited, we can attempt to extract the data.
+        // The selectors are now based on the exact HTML structure you provided.
         const extractedData = await page.evaluate(() => {
             // Selector for the total contribution amount span
             const amountElement = document.querySelector('.statistic .value span');
-            let totalAmount = 0; // Default to 0
+            let totalAmount = 0;
 
             if (amountElement) {
-                const rawText = amountElement.innerText; // e.g., "520&nbsp;€"
+                const rawText = amountElement.innerText;
                 const cleanedText = rawText.replace(/€/g, '').replace(/\s/g, '').trim();
                 totalAmount = parseInt(cleanedText, 10) || 0;
             }
 
-            // Select all contributor list items
-            const contributorElements = document.querySelectorAll('li.contribution');
+            // Select all contributor list items within the correct container
+            const contributorElements = document.querySelectorAll('div.block ul.contributions__ul li.contribution');
             const contributors = [];
             
             contributorElements.forEach(el => {
@@ -91,14 +95,12 @@ module.exports = async (req, res) => {
 
     } catch (error) {
         console.error(error);
-        // If an error occurs, send a server error status and a message
         res.status(500).json({ 
             error: 'Failed to scrape the page.',
             details: error.message 
         });
-        return; // Stop execution
+        return;
     } finally {
-        // Ensure the browser is closed
         if (browser !== null) {
             await browser.close();
         }
