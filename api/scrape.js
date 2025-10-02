@@ -29,18 +29,23 @@ module.exports = async (req, res) => {
       'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36'
     );
 
-    // collect JSON responses
+    // 👇 Add this immediately after creating the page
     const jsonResponses = [];
     page.on('response', async (resp) => {
       try {
         const ct = resp.headers()['content-type'] || '';
         if (ct.includes('application/json')) {
+          console.log('[json]', resp.url());
           const data = await resp.json().catch(() => null);
-          if (data) jsonResponses.push({ url: resp.url(), data });
+          if (data) {
+            console.log('[json payload snippet]', JSON.stringify(data).slice(0, 200));
+            jsonResponses.push({ url: resp.url(), data });
+          }
         }
       } catch (_) {}
     });
-
+    
+    // Now navigate
     await page.goto(url, { waitUntil: 'networkidle2', timeout: 45000 });
 
     // cookie banner (best-effort)
