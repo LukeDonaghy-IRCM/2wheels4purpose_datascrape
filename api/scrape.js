@@ -79,7 +79,7 @@ module.exports = async (req, res) => {
     res.setHeader('Cache-Control', 's-maxage=300, stale-while-revalidate');
     res.status(200).json({
         project_title: projectTitle,
-        total_contribution_amount: cleanedText
+        total_contribution_amount: totalAmount
     });
 };
 
