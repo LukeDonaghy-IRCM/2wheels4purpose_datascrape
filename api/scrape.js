@@ -29,7 +29,6 @@ module.exports = async (req, res) => {
         });
 
         const page = await browser.newPage();
-        A
         // Navigate to the page and wait for all network activity to settle.
         await page.goto(urlToScrape, { waitUntil: 'networkidle2', timeout: 25000 });
         
