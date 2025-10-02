@@ -48,7 +48,7 @@ module.exports = async (req, res) => {
         const extractedData = await page.evaluate(() => {
             
             // Selector for the total contribution amount span
-            const amountElement = document.querySelector('.statistic .value span');
+            const amountElement = document.querySelector('span[data-v-c49acc64]');
             // The default is now an empty string, as we expect a string result.
             let totalAmount = ''; 
             
