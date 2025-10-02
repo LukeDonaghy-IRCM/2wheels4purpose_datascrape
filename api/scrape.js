@@ -1,10 +1,10 @@
 const chromium = require('@sparticuz/chromium');
 const puppeteer = require('puppeteer-core');
 
-const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
+const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 
 module.exports = async (req, res) => {
-  const url =
+  const targetUrl =
     'https://jesoutiens.fondationsaintluc.be/fr-FR/project/2-wheels-4-purpose?tab=vue-d-ensemble';
 
   let browser;
@@ -24,27 +24,9 @@ module.exports = async (req, res) => {
     });
 
     const page = await browser.newPage();
-    await page.setUserAgent(
-      'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36'
-    );
+    await page.goto(targetUrl, { waitUntil: 'networkidle2', timeout: 45000 });
 
-    // --- Capture contributions API response
-    let contributionsData = null;
-    page.on('response', async (resp) => {
-      const url = resp.url();
-      if (url.includes('/projects/2-wheels-4-purpose/contributions')) {
-        try {
-          const json = await resp.json();
-          contributionsData = json;
-        } catch (e) {
-          console.error('[parse error]', e.message);
-        }
-      }
-    });
-
-    await page.goto(url, { waitUntil: 'networkidle2', timeout: 45000 });
-
-    // Trigger lazy loading by scrolling down
+    // Scroll to trigger lazy rendering
     await page.evaluate(async () => {
       await new Promise((resolve) => {
         let y = 0;
@@ -56,55 +38,59 @@ module.exports = async (req, res) => {
             clearInterval(timer);
             resolve();
           }
-        }, 200);
+        }, 150);
       });
     });
 
-    // wait a bit for the API call
-    await sleep(4000);
+    await sleep(3000);
 
-    if (!contributionsData) {
-      return res.status(500).json({
-        error: 'No contributions API response captured',
-      });
-    }
-
-    // normalize the data
-    const contributors = (contributionsData.data || contributionsData.items || [])
-      .map((c) => ({
-        name:
-          (c.name || c.donorName || c.contributorName || c.contributor || '').trim(),
-        amount_label:
-          (c.amountFormatted || c.amount_label || c.amount || c.value || '').trim(),
-      }))
-      .filter(
-        (c) => c.name && !/^(anonyme|anonymous)$/i.test(c.name)
+    // --- Extract contributors from DOM ---
+    const extracted = await page.evaluate(() => {
+      const rows = Array.from(
+        document.querySelectorAll('li.contribution, li[class*="contribution"]')
       );
 
-    const payload = {
-      total_contributions_count:
-        contributionsData.total ||
-        contributionsData.count ||
-        contributionsData.totalCount ||
-        contributors.length,
-      contributors,
-    };
+      const contributors = rows.map((row) => {
+        const nameEl =
+          row.querySelector('.contribution__name') ||
+          row.querySelector('[class*="name"]');
+        const amtEl =
+          row.querySelector('.contribution__amount') ||
+          row.querySelector('[class*="amount"]');
 
-    res.setHeader('Content-Type', 'application/json');
-    res.setHeader('Cache-Control', 's-maxage=300, stale-while-revalidate');
-    res.status(200).json(payload);
+        return {
+          name: nameEl ? nameEl.textContent.trim() : '',
+          amount_label: amtEl ? amtEl.textContent.trim() : '',
+        };
+      }).filter(c => c.name);
 
-  } catch (error) {
-    console.error(error);
-    res.status(500).json({
-      error: 'Failed to scrape the contribution data.',
-      details: error.message,
+      let total = null;
+      const countEl = document.querySelector('[data-testid="contributions-count"]') ||
+                      document.querySelector('strong.bold.color--prim');
+      if (countEl && /\d/.test(countEl.textContent)) {
+        total = parseInt(countEl.textContent.replace(/\D+/g, ''), 10);
+      }
+
+      return { contributors, total };
     });
-  } finally {
+
+    await browser.close();
+
+    // Filter out anonymous
+    const filtered = extracted.contributors.filter(
+      (c) => !/^(anonyme|anonymous)$/i.test(c.name)
+    );
+
+    res.status(200).json({
+      total_contributions_count:
+        extracted.total != null ? extracted.total : filtered.length,
+      contributors: filtered,
+    });
+  } catch (error) {
     if (browser) {
-      try {
-        await browser.close();
-      } catch {}
+      try { await browser.close(); } catch {}
     }
+    console.error(error);
+    res.status(500).json({ error: error.message });
   }
 };
