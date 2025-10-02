@@ -45,18 +45,12 @@ module.exports = async (req, res) => {
         
         // --- UPDATED INTERACTION LOGIC ---
 
-        // 1. Wait for the project title to be visible. This is a more reliable
-        //    indicator that the page's initial JavaScript has rendered.
-        const coreContentSelector = '.project__title';
-        await page.waitForSelector(coreContentSelector, { visible: true, timeout: 20000 });
-
-        // 3. Wait for the contributor list to appear.
-        const contributorListSelector = 'li.contribution .contribution__name';
-        await page.waitForSelector(contributorListSelector, { visible: true, timeout: 10000 });
-
+        // 1. A general, fixed wait of 3 seconds to allow the initial page to render.
+        // This replaces the specific selector waits.
+        await page.waitForTimeout(3000);
 
         // --- DATA EXTRACTION ---
-        // Now that we've waited for the data to be visible, we can extract it.
+        // Now that we've waited, we can attempt to extract the data.
         const extractedData = await page.evaluate(() => {
             // Selector for the total contribution amount span
             const amountElement = document.querySelector('.statistic .value span');
@@ -64,9 +58,7 @@ module.exports = async (req, res) => {
 
             if (amountElement) {
                 const rawText = amountElement.innerText; // e.g., "520&nbsp;€"
-                // Remove currency symbols, non-breaking spaces, and trim whitespace
                 const cleanedText = rawText.replace(/€/g, '').replace(/\s/g, '').trim();
-                // Convert the cleaned string to an integer
                 totalAmount = parseInt(cleanedText, 10) || 0;
             }
 
@@ -81,7 +73,6 @@ module.exports = async (req, res) => {
                 const name = nameElement ? nameElement.innerText.trim() : '';
                 const amount = amountElement ? amountElement.innerText.trim() : '';
 
-                // Check for anonymous donors and only add valid entries
                 if (name && name.toLowerCase() !== 'anonyme') {
                     contributors.push({
                         name: name,
@@ -114,13 +105,8 @@ module.exports = async (req, res) => {
     }
 
     // --- SEND THE JSON RESPONSE ---
-    // Set the response header to indicate the content is JSON
     res.setHeader('Content-Type', 'application/json');
-    // Set caching headers to cache the response for 5 minutes (300 seconds)
-    // This prevents re-scraping on every single request, saving resources.
     res.setHeader('Cache-Control', 's-maxage=300, stale-while-revalidate');
-    
-    // Send the successful JSON response
     res.status(200).json(result);
 };
 
