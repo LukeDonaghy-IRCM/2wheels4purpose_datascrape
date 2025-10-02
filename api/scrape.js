@@ -13,7 +13,7 @@ module.exports = async (req, res) => {
     let result = null;
 
     try {
-        // Launch a headless browser instance using the updated chromium package.
+        // Launch a headless browser instance.
         browser = await puppeteer.launch({
             args: [
                 ...chromium.args,
@@ -30,7 +30,7 @@ module.exports = async (req, res) => {
 
         const page = await browser.newPage();
         
-        // Block unnecessary resources like images and CSS to speed up loading
+        // Block unnecessary resources to speed up loading.
         await page.setRequestInterception(true);
         page.on('request', (request) => {
             if (['image', 'stylesheet', 'font'].includes(request.resourceType())) {
@@ -40,51 +40,48 @@ module.exports = async (req, res) => {
             }
         });
 
-        // Navigate to the page and wait for it to be fully loaded
+        // Navigate to the page and wait for it to be fully loaded.
         await page.goto(urlToScrape, { waitUntil: 'networkidle2' });
-        await page.waitForSelector('span[data-v-c49acc64-s]');
-        await page.waitForSelector('span[data-v-d3bfa2a4]');
         
-        // --- DATA EXTRACTION ---
-        // The selectors are now based on the exact HTML structure you provided.
-        const extractedData = await page.evaluate(() => {
-            
-            // Selector for the total contribution amount span
-            const amountElement = document.querySelector('span[data-v-c49acc64-s]');
-            // The default is now an empty string, as we expect a string result.
-            let totalAmount = ''; 
-            
-            if (amountElement) {
-                // Directly assign the raw inner text of the element.
-                totalAmount = amountElement.innerText;
-            }
+        // --- SEQUENTIAL DATA EXTRACTION ---
 
-            // Select all contributor list items within the correct container
-            const contributorElements = document.querySelectorAll('div.block ul.contributions__ul li.contribution');
-            const contributors = [];
+        // 1. Wait for the main statistic block to be visible.
+        const statisticSelector = '.statistic .value span';
+        await page.waitForSelector(statisticSelector, { visible: true, timeout: 15000 });
+
+        // 2. Extract the total amount, which is visible on the initial page load.
+        const totalAmount = await page.evaluate((selector) => {
+            const amountElement = document.querySelector(selector);
+            return amountElement ? amountElement.innerText : '0 €';
+        }, statisticSelector);
+
+        // 4. Wait for the contributor list container to appear after the click.
+        const contributorListSelector = 'ul.contributions__ul';
+        await page.waitForSelector(contributorListSelector, { visible: true, timeout: 10000 });
+
+        // 5. Extract the list of contributors.
+        const contributors = await page.evaluate((selector) => {
+            const contributorElements = document.querySelectorAll(`${selector} li.contribution`);
+            const contributorList = [];
             
             contributorElements.forEach(el => {
                 const nameElement = el.querySelector('.contribution__name');
                 const amountElement = el.querySelector('.contribution__amount');
-
                 const name = nameElement ? nameElement.innerText.trim() : '';
                 const amount = amountElement ? amountElement.innerText.trim() : '';
 
                 if (name && name.toLowerCase() !== 'anonyme') {
-                    contributors.push({
-                        name: name,
-                        amount: amount
-                    });
+                    contributorList.push({ name, amount });
                 }
             });
+            return contributorList;
+        }, contributorListSelector);
 
-            return {
-                total_contribution_amount: totalAmount,
-                contributors: contributors,
-            };
-        });
-
-        result = extractedData;
+        // 6. Assemble the final result.
+        result = {
+            total_contribution_amount: totalAmount,
+            contributors: contributors,
+        };
 
     } catch (error) {
         console.error(error);
