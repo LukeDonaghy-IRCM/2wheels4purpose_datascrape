@@ -4,7 +4,7 @@
   "description": "A serverless function to scrape project data for Webflow.",
   "main": "api/scrape.js",
   "dependencies": {
-    "chrome-aws-lambda": "^10.1.0",
-    "puppeteer-core": "^10.4.0"
+    "@sparticuz/chromium": "^123.0.1",
+    "puppeteer-core": "^22.10.0"
   }
 }
