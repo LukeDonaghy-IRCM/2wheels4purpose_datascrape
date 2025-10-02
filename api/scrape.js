@@ -43,18 +43,53 @@ module.exports = async (req, res) => {
         // Navigate to the page and wait for it to be fully loaded
         await page.goto(urlToScrape, { waitUntil: 'networkidle2' });
         
+        // --- UPDATED INTERACTION LOGIC ---
+
+        // 3. After clicking, wait for the specific div container you identified to be populated.
+        // This is a much more reliable wait condition.
+        await page.waitForFunction(
+            () => document.querySelector('div.block ul.contributions__ul')?.children.length > 0,
+            { timeout: 10000 }
+        );
+
+
         // --- DATA EXTRACTION ---
         // The selectors are now based on the exact HTML structure you provided.
         const extractedData = await page.evaluate(() => {
+            
             // Selector for the total contribution amount span
             const amountElement = document.querySelector('.statistic .value span');
-            let totalAmount = 0;
-
+            // The default is now an empty string, as we expect a string result.
+            let totalAmount = ''; 
+            
             if (amountElement) {
-                const rawText = amountElement.innerText;
-                const cleanedText = rawText.replace(/€/g, '').replace(/\s/g, '').trim();
-                totalAmount = parseInt(cleanedText, 10) || 0;
+                // Directly assign the raw inner text of the element.
+                totalAmount = amountElement.innerText;
             }
+
+            // Select all contributor list items within the correct container
+            const contributorElements = document.querySelectorAll('div.block ul.contributions__ul li.contribution');
+            const contributors = [];
+            
+            contributorElements.forEach(el => {
+                const nameElement = el.querySelector('.contribution__name');
+                const amountElement = el.querySelector('.contribution__amount');
+
+                const name = nameElement ? nameElement.innerText.trim() : '';
+                const amount = amountElement ? amountElement.innerText.trim() : '';
+
+                if (name && name.toLowerCase() !== 'anonyme') {
+                    contributors.push({
+                        name: name,
+                        amount: amount
+                    });
+                }
+            });
+
+            return {
+                total_contribution_amount: totalAmount,
+                contributors: contributors,
+            };
         });
 
         result = extractedData;
