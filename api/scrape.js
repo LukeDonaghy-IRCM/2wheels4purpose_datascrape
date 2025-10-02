@@ -62,7 +62,7 @@ module.exports = async (req, res) => {
     } catch {}
 
     // Give the SPA a moment to fetch and render
-    await page.waitForTimeout(2500);
+    await page.waitFor(2500);
 
     // ---------- Strategy A: find contributions in captured JSON ----------
     const isValidContribItem = (x) => {
