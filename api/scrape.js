@@ -36,7 +36,7 @@ module.exports = async (req, res) => {
         // --- DATA EXTRACTION ---
 
         // 1. Define the selector for the project title.
-        const titleSelector = '.title block';
+        const titleSelector = '.title.block';
                 
         // 3. Extract the text content of the title element.
         projectTitle = await page.evaluate((selector) => {
