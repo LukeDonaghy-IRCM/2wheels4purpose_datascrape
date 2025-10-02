@@ -46,14 +46,20 @@ module.exports = async (req, res) => {
         // --- UPDATED INTERACTION LOGIC ---
 
         // 1. Wait for a core content element to be visible first.
-        //    This ensures the page's JavaScript has finished its initial render.
         const coreContentSelector = '.statistic';
         await page.waitForSelector(coreContentSelector, { visible: true, timeout: 20000 });
 
-        // 2. Now that the core content is loaded, find and click the "Soutiens" tab.
-        const supportersTabSelector = 'a.project-nav-link[href$="#supporters"]';
-        await page.waitForSelector(supportersTabSelector, { timeout: 10000 });
-        await page.click(supportersTabSelector);
+        // 2. Find the "Soutiens" button using a more robust method (XPath).
+        // This looks for a button that contains the text "Soutiens".
+        const supportersButtonXPath = "//button[contains(., 'Soutiens')]";
+        await page.waitForXPath(supportersButtonXPath, { timeout: 10000 });
+        const [supportersButton] = await page.$x(supportersButtonXPath);
+
+        if (supportersButton) {
+            await supportersButton.click();
+        } else {
+            throw new Error('Could not find the "Soutiens" button.');
+        }
 
         // 3. Wait for the contributor list to appear.
         const contributorListSelector = 'li.contribution .contribution__name';
@@ -63,7 +69,7 @@ module.exports = async (req, res) => {
         // --- DATA EXTRACTION ---
         // Now that we've waited for the data to be visible, we can extract it.
         const extractedData = await page.evaluate(() => {
-            // UPDATED: Selector for the total contribution amount span
+            // Selector for the total contribution amount span
             const amountElement = document.querySelector('.statistic .value span');
             let totalAmount = 0; // Default to 0
 
