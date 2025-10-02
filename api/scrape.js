@@ -43,14 +43,19 @@ module.exports = async (req, res) => {
         // Navigate to the page and wait for it to be fully loaded
         await page.goto(urlToScrape, { waitUntil: 'networkidle2' });
         
-        // --- INTERACT WITH THE PAGE ---
+        // --- UPDATED INTERACTION LOGIC ---
 
-        // 1. Define the selector for the "Soutiens" (Supporters) tab.
+        // 1. Wait for a core content element to be visible first.
+        //    This ensures the page's JavaScript has finished its initial render.
+        const coreContentSelector = '.statistic';
+        await page.waitForSelector(coreContentSelector, { visible: true, timeout: 20000 });
+
+        // 2. Now that the core content is loaded, find and click the "Soutiens" tab.
         const supportersTabSelector = 'a.project-nav-link[href$="#supporters"]';
         await page.waitForSelector(supportersTabSelector, { timeout: 10000 });
         await page.click(supportersTabSelector);
 
-        // 2. Wait for the contributor list to appear using the new, correct selector.
+        // 3. Wait for the contributor list to appear.
         const contributorListSelector = 'li.contribution .contribution__name';
         await page.waitForSelector(contributorListSelector, { visible: true, timeout: 10000 });
 
